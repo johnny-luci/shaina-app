@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔧 שיינה משימוש - ניהול משימות</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-primary:#1a1a2e;--bg-secondary:#16213e;--bg-tertiary:#0f3460;
+  --bg-card:#1e2a4a;--bg-hover:#253a5e;--bg-input:#0d1b3e;
+  --text-primary:#e8e8e8;--text-secondary:#a0a8c0;--text-muted:#6b7280;
+  --accent:#579bfc;--accent-hover:#3b82f6;
+  --border:#2a3a5e;--border-light:#3a4a6e;
+  --red:#e2445c;--orange:#fdab3d;--yellow:#ffcb00;--green:#00c875;
+  --blue:#579bfc;--purple:#a25ddc;--pink:#ff158a;--teal:#66ccff;
+  --status-not-started:#c4c4c4;--status-working:#fdab3d;--status-stuck:#e2445c;
+  --status-review:#a25ddc;--status-done:#00c875;
+  --priority-critical:#e2445c;--priority-high:#fdab3d;--priority-medium:#579bfc;--priority-low:#c4c4c4;
+  --sidebar-width:260px;--header-height:60px;
+  --radius:8px;--radius-sm:4px;
+  --shadow:0 4px 12px rgba(0,0,0,0.3);
+  --transition:all 0.2s ease;
+}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg-secondary)}
+::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* Layout */
+.app{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-width);background:var(--bg-secondary);border-left:1px solid var(--border);display:flex;flex-direction:column;position:fixed;right:0;top:0;bottom:0;z-index:100;transition:transform 0.3s ease}
+.sidebar.collapsed{transform:translateX(100%)}
+.main-content{margin-right:var(--sidebar-width);flex:1;display:flex;flex-direction:column;min-height:100vh;transition:margin-right 0.3s ease}
+.main-content.expanded{margin-right:0}
+
+/* Sidebar */
+.sidebar-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sidebar-logo{font-size:22px;font-weight:700;color:var(--accent);white-space:nowrap}
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
+.sidebar-section{padding:8px 20px}
+.sidebar-section-title{font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:8px;letter-spacing:1px}
+.board-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;transition:var(--transition);border-radius:0;position:relative}
+.board-item:hover{background:var(--bg-hover)}
+.board-item.active{background:var(--bg-tertiary);border-right:3px solid var(--accent)}
+.board-item .board-icon{font-size:18px}
+.board-item .board-name{font-size:14px;flex:1}
+.board-item .board-count{font-size:11px;background:var(--bg-tertiary);padding:2px 8px;border-radius:10px;color:var(--text-secondary)}
+.add-board-btn{display:flex;align-items:center;gap:8px;padding:10px 20px;cursor:pointer;color:var(--text-muted);font-size:13px;transition:var(--transition)}
+.add-board-btn:hover{color:var(--accent);background:var(--bg-hover)}
+
+/* Members */
+.sidebar-members{padding:12px 20px;border-top:1px solid var(--border)}
+.member-item{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px}
+.member-avatar{font-size:20px;width:28px;text-align:center}
+
+/* Header */
+.header{height:var(--header-height);background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:50}
+.hamburger{display:none;background:none;border:none;color:var(--text-primary);font-size:22px;cursor:pointer;padding:4px 8px}
+.board-title{font-size:20px;font-weight:700;flex-shrink:0}
+.header-actions{display:flex;align-items:center;gap:10px;margin-right:auto}
+.search-box{position:relative}
+.search-box input{background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px 8px 36px;border-radius:var(--radius);font-size:13px;width:220px;transition:var(--transition)}
+.search-box input:focus{outline:none;border-color:var(--accent);width:280px}
+.search-box .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px}
+.view-toggle{display:flex;background:var(--bg-input);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+.view-btn{padding:8px 16px;background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:13px;transition:var(--transition);font-family:inherit}
+.view-btn.active{background:var(--accent);color:#fff}
+.view-btn:hover:not(.active){background:var(--bg-hover)}
+.add-task-header-btn{background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;transition:var(--transition);font-family:inherit}
+.add-task-header-btn:hover{background:var(--accent-hover)}
+.filter-btn{background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--border);padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px;transition:var(--transition);font-family:inherit;display:flex;align-items:center;gap:6px}
+.filter-btn:hover{border-color:var(--accent);color:var(--text-primary)}
+.filter-btn.active-filter{border-color:var(--accent);color:var(--accent);background:rgba(87,155,252,0.1)}
+
+/* Filter Panel */
+.filter-panel{display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 24px 16px;gap:12px;flex-wrap:wrap;animation:slideDown 0.2s ease}
+.filter-panel.show{display:flex}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-group label{font-size:11px;color:var(--text-muted);text-transform:uppercase}
+.filter-group select{background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:6px 10px;border-radius:var(--radius-sm);font-size:13px;font-family:inherit;cursor:pointer}
+.filter-group select:focus{outline:none;border-color:var(--accent)}
+
+/* Table View */
+.content-area{flex:1;padding:16px 24px;overflow-y:auto}
+.group{margin-bottom:24px;border-radius:var(--radius);overflow:hidden;background:var(--bg-card);border:1px solid var(--border);animation:fadeIn 0.3s ease}
+.group-header{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none;position:relative}
+.group-color-bar{width:6px;height:100%;position:absolute;right:0;top:0;border-radius:0 var(--radius) var(--radius) 0}
+.group-toggle{color:var(--text-muted);transition:transform 0.2s;font-size:12px}
+.group-toggle.collapsed{transform:rotate(-90deg)}
+.group-name{font-size:16px;font-weight:600;flex:1;padding-right:10px}
+.group-name[contenteditable]:focus{outline:none;background:var(--bg-input);padding:2px 6px;border-radius:var(--radius-sm)}
+.group-meta{display:flex;align-items:center;gap:12px}
+.group-count{font-size:12px;color:var(--text-muted);background:var(--bg-primary);padding:2px 10px;border-radius:10px}
+.group-progress{width:100px;height:6px;background:var(--bg-primary);border-radius:3px;overflow:hidden}
+.group-progress-fill{height:100%;border-radius:3px;transition:width 0.5s ease}
+
+.table-header{display:grid;grid-template-columns:minmax(250px,2fr) 120px 130px 100px 120px minmax(120px,1fr) 50px;gap:1px;padding:0 16px;background:var(--bg-secondary);border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);text-transform:uppercase;font-weight:600;letter-spacing:0.5px}
+.table-header div{padding:10px 8px}
+.task-row{display:grid;grid-template-columns:minmax(250px,2fr) 120px 130px 100px 120px minmax(120px,1fr) 50px;gap:1px;padding:0 16px;border-bottom:1px solid var(--border);transition:var(--transition);cursor:grab;align-items:center}
+.task-row:hover{background:var(--bg-hover)}
+.task-row.dragging{opacity:0.5;background:var(--bg-tertiary)}
+.task-row.drag-over{border-top:2px solid var(--accent)}
+.task-cell{padding:10px 8px;font-size:13px;display:flex;align-items:center;min-height:42px}
+.task-name{font-weight:500;cursor:text}
+.task-name[contenteditable]:focus{outline:none;background:var(--bg-input);padding:4px 8px;border-radius:var(--radius-sm)}
+
+/* Assignee */
+.assignee-cell{display:flex;align-items:center;gap:6px;cursor:pointer;position:relative}
+.assignee-avatar{font-size:20px}
+.assignee-name{font-size:12px}
+.assignee-dropdown{display:none;position:absolute;top:100%;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:4px;z-index:200;min-width:150px;box-shadow:var(--shadow)}
+.assignee-dropdown.show{display:block}
+.assignee-option{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-radius:var(--radius-sm);font-size:13px}
+.assignee-option:hover{background:var(--bg-hover)}
+
+/* Status & Priority pills */
+.status-pill,.priority-pill{padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;transition:var(--transition);min-width:80px;display:inline-block;position:relative;user-select:none}
+.status-pill:hover,.priority-pill:hover{filter:brightness(1.2)}
+.status-not-started{background:var(--status-not-started);color:#333}
+.status-working{background:var(--status-working);color:#333}
+.status-stuck{background:var(--status-stuck);color:#fff}
+.status-review{background:var(--status-review);color:#fff}
+.status-done{background:var(--status-done);color:#fff}
+.priority-critical{background:var(--priority-critical);color:#fff}
+.priority-high{background:var(--priority-high);color:#333}
+.priority-medium{background:var(--priority-medium);color:#fff}
+.priority-low{background:var(--priority-low);color:#333}
+
+/* Dropdown for status/priority */
+.pill-dropdown{display:none;position:absolute;top:100%;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:4px;z-index:200;min-width:130px;box-shadow:var(--shadow)}
+.pill-dropdown.show{display:block}
+.pill-option{padding:6px 10px;cursor:pointer;border-radius:var(--radius-sm);font-size:12px;margin:2px 0}
+.pill-option:hover{filter:brightness(1.2)}
+
+/* Date */
+.date-cell{position:relative}
+.date-cell input[type="date"]{background:transparent;border:none;color:var(--text-primary);font-size:13px;font-family:inherit;cursor:pointer;width:100%}
+.date-cell input[type="date"]:focus{outline:none}
+.date-cell.overdue input{color:var(--red)}
+.date-cell.overdue::after{content:'⚠️';position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:12px}
+
+/* Tags */
+.tags-cell{display:flex;flex-wrap:wrap;gap:4px}
+.tag{background:var(--bg-tertiary);color:var(--text-secondary);padding:2px 8px;border-radius:10px;font-size:11px;cursor:pointer;transition:var(--transition);white-space:nowrap}
+.tag:hover{background:var(--accent);color:#fff}
+
+/* Delete */
+.delete-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;transition:var(--transition);opacity:0;padding:4px 8px}
+.task-row:hover .delete-btn{opacity:1}
+.delete-btn:hover{color:var(--red)}
+
+/* Add task row */
+.add-task-row{padding:8px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text-muted);font-size:13px;transition:var(--transition)}
+.add-task-row:hover{background:var(--bg-hover);color:var(--accent)}
+.add-task-row .plus{font-size:16px}
+
+/* Kanban View */
+.kanban-container{display:flex;gap:16px;padding:16px 24px;overflow-x:auto;flex:1;align-items:flex-start}
+.kanban-column{min-width:280px;max-width:320px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);display:flex;flex-direction:column;max-height:calc(100vh - 150px)}
+.kanban-column-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;position:relative}
+.kanban-column-color{width:4px;height:24px;border-radius:2px;position:absolute;right:0;top:50%;transform:translateY(-50%)}
+.kanban-column-title{font-weight:600;font-size:14px;flex:1;padding-right:8px}
+.kanban-column-count{font-size:11px;background:var(--bg-primary);padding:2px 8px;border-radius:10px;color:var(--text-muted)}
+.kanban-cards{flex:1;overflow-y:auto;padding:8px}
+.kanban-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;cursor:grab;transition:var(--transition)}
+.kanban-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow)}
+.kanban-card.dragging{opacity:0.5}
+.kanban-card-title{font-weight:500;font-size:14px;margin-bottom:8px}
+.kanban-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kanban-card-assignee{display:flex;align-items:center;gap:4px;font-size:12px}
+.kanban-card-priority{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600}
+.kanban-card-date{font-size:11px;color:var(--text-muted)}
+.kanban-card-date.overdue{color:var(--red)}
+.kanban-card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;animation:fadeIn 0.2s}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:scaleIn 0.2s ease}
+.modal h3{font-size:18px;margin-bottom:16px;color:var(--accent)}
+.modal-field{margin-bottom:12px}
+.modal-field label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:10px 12px;border-radius:var(--radius);font-size:14px;font-family:inherit}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{outline:none;border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-start;margin-top:16px}
+.btn{padding:10px 20px;border-radius:var(--radius);border:none;cursor:pointer;font-size:14px;font-weight:600;transition:var(--transition);font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+.btn-secondary{background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border)}.btn-secondary:hover{background:var(--bg-hover)}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{filter:brightness(1.2)}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Responsive */
+@media(max-width:900px){
+  .sidebar{transform:translateX(100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main-content{margin-right:0!important}
+  .hamburger{display:block}
+  .table-header,.task-row{grid-template-columns:minmax(180px,2fr) 100px 110px 80px 100px 0px 40px}
+  .tags-cell{display:none}
+  .search-box input{width:150px}
+  .search-box input:focus{width:200px}
+}
+@media(max-width:600px){
+  .header{padding:0 12px;gap:8px}
+  .content-area{padding:12px}
+  .table-header,.task-row{grid-template-columns:minmax(140px,2fr) 0px 100px 70px 0px 0px 36px}
+  .table-header div:nth-child(2),.task-row .task-cell:nth-child(2),
+  .table-header div:nth-child(5),.task-row .task-cell:nth-child(5){display:none}
+  .kanban-column{min-width:250px}
+}
+
+/* Empty state */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state .empty-icon{font-size:48px;margin-bottom:16px}
+.empty-state p{font-size:16px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:var(--text-primary);padding:12px 24px;border-radius:var(--radius);border:1px solid var(--accent);box-shadow:var(--shadow);z-index:9999;animation:slideUp 0.3s ease;font-size:14px}
+@keyframes slideUp{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+
+.group-tasks{transition:max-height 0.3s ease}
+.group-tasks.collapsed-tasks{display:none}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🔧 שיינה משימוש</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">בורדים</div>
+        <div id="boardList"></div>
+        <div class="add-board-btn" onclick="showAddBoardModal()">
+          <span>＋</span> <span>בורד חדש</span>
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-members">
+      <div class="sidebar-section-title">צוות</div>
+      <div id="memberList"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content" id="mainContent">
+    <header class="header">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <div class="board-title" id="boardTitle"></div>
+      <div class="header-actions">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="חיפוש משימות..." id="searchInput" oninput="handleSearch()">
+        </div>
+        <button class="filter-btn" id="filterToggleBtn" onclick="toggleFilters()">
+          <span>⚡</span> סינון
+        </button>
+        <div class="view-toggle">
+          <button class="view-btn active" data-view="table" onclick="setView('table')">📋 טבלה</button>
+          <button class="view-btn" data-view="kanban" onclick="setView('kanban')">📊 קנבן</button>
+        </div>
+        <button class="add-task-header-btn" onclick="showAddTaskModal()">＋ משימה חדשה</button>
+      </div>
+    </header>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel" id="filterPanel">
+      <div class="filter-group">
+        <label>סטטוס</label>
+        <select id="filterStatus" onchange="applyFilters()">
+          <option value="">הכל</option>
+          <option value="לא התחיל">לא התחיל</option>
+          <option value="עובד על זה">עובד על זה</option>
+          <option value="תקוע">תקוע</option>
+          <option value="בבדיקה">בבדיקה</option>
+          <option value="הושלם">הושלם</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>עדיפות</label>
+        <select id="filterPriority" onchange="applyFilters()">
+          <option value="">הכל</option>
+          <option value="קריטי">קריטי</option>
+          <option value="גבוה">גבוה</option>
+          <option value="בינוני">בינוני</option>
+          <option value="נמוך">נמוך</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>אחראי</label>
+        <select id="filterAssignee" onchange="applyFilters()">
+          <option value="">הכל</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="content-area" id="contentArea"></div>
+  </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <h3 id="taskModalTitle">משימה חדשה</h3>
+    <div class="modal-field">
+      <label>שם משימה *</label>
+      <input type="text" id="taskNameInput" placeholder="הכנס שם משימה...">
+    </div>
+    <div class="modal-field">
+      <label>אחראי</label>
+      <select id="taskAssigneeInput"></select>
+    </div>
+    <div class="modal-field">
+      <label>סטטוס</label>
+      <select id="taskStatusInput">
+        <option value="לא התחיל">לא התחיל</option>
+        <option value="עובד על זה">עובד על זה</option>
+        <option value="תקוע">תקוע</option>
+        <option value="בבדיקה">בבדיקה</option>
+        <option value="הושלם">הושלם</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>עדיפות</label>
+      <select id="taskPriorityInput">
+        <option value="בינוני">בינוני</option>
+        <option value="קריטי">קריטי</option>
+        <option value="גבוה">גבוה</option>
+        <option value="נמוך">נמוך</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>תאריך יעד</label>
+      <input type="date" id="taskDueDateInput">
+    </div>
+    <div class="modal-field">
+      <label>תגיות (מופרדות בפסיקים)</label>
+      <input type="text" id="taskTagsInput" placeholder="עיצוב, UI, Backend...">
+    </div>
+    <input type="hidden" id="taskGroupInput">
+    <input type="hidden" id="editTaskId">
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveTask()">שמור</button>
+      <button class="btn btn-secondary" onclick="closeModal('taskModal')">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Board Modal -->
+<div class="modal-overlay" id="boardModal">
+  <div class="modal">
+    <h3>בורד חדש</h3>
+    <div class="modal-field">
+      <label>שם הבורד *</label>
+      <input type="text" id="boardNameInput" placeholder="שם הפרויקט...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveBoard()">צור בורד</button>
+      <button class="btn btn-secondary" onclick="closeModal('boardModal')">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Group Modal -->
+<div class="modal-overlay" id="groupModal">
+  <div class="modal">
+    <h3>קבוצה חדשה</h3>
+    <div class="modal-field">
+      <label>שם הקבוצה *</label>
+      <input type="text" id="groupNameInput" placeholder="שם הקבוצה...">
+    </div>
+    <div class="modal-field">
+      <label>צבע</label>
+      <select id="groupColorInput">
+        <option value="#579bfc">כחול</option>
+        <option value="#00c875">ירוק</option>
+        <option value="#fdab3d">כתום</option>
+        <option value="#e2445c">אדום</option>
+        <option value="#a25ddc">סגול</option>
+        <option value="#ff158a">ורוד</option>
+        <option value="#66ccff">תכלת</option>
+        <option value="#ffcb00">צהוב</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveGroup()">צור קבוצה</button>
+      <button class="btn btn-secondary" onclick="closeModal('groupModal')">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA ====================
+const MEMBERS = [
+  {name:"ירון",avatar:"👨‍💻"},{name:"אלעד",avatar:"🧑‍🔬"},{name:"נועם",avatar:"🧑‍🎨"},
+  {name:"דנה",avatar:"👩‍💼"},{name:"מיכל",avatar:"👩‍🔧"},{name:"עומר",avatar:"🧑‍🚀"},
+  {name:"שירה",avatar:"👩‍🏫"},{name:"יוני",avatar:"🧑‍⚕️"}
+];
+
+const STATUSES = [
+  {value:"לא התחיל",class:"status-not-started",color:"#c4c4c4"},
+  {value:"עובד על זה",class:"status-working",color:"#fdab3d"},
+  {value:"תקוע",class:"status-stuck",color:"#e2445c"},
+  {value:"בבדיקה",class:"status-review",color:"#a25ddc"},
+  {value:"הושלם",class:"status-done",color:"#00c875"}
+];
+
+const PRIORITIES = [
+  {value:"קריטי",class:"priority-critical"},{value:"גבוה",class:"priority-high"},
+  {value:"בינוני",class:"priority-medium"},{value:"נמוך",class:"priority-low"}
+];
+
+const DEFAULT_DATA = {"boards":[{"id":"board-1","name":"🚀 פיתוח מוצר","groups":[{"id":"grp-1-1","name":"ספרינט נוכחי","color":"#579bfc","tasks":[{"id":"t1","name":"עיצוב דף נחיתה חדש","assignee":"דנה","status":"עובד על זה","priority":"גבוה","dueDate":"2025-07-20","tags":["עיצוב","UI"]},{"id":"t2","name":"אינטגרציה עם API תשלומים","assignee":"ירון","status":"תקוע","priority":"קריטי","dueDate":"2025-07-15","tags":["Backend","תשלומים"]},{"id":"t3","name":"כתיבת טסטים ליחידה","assignee":"נועם","status":"לא התחיל","priority":"בינוני","dueDate":"2025-07-25","tags":["QA","טסטים"]},{"id":"t4","name":"שיפור ביצועי טעינה","assignee":"אלעד","status":"בבדיקה","priority":"גבוה","dueDate":"2025-07-18","tags":["ביצועים"]},{"id":"t5","name":"תיעוד API פנימי","assignee":"שירה","status":"הושלם","priority":"נמוך","dueDate":"2025-07-10","tags":["תיעוד"]}]},{"id":"grp-1-2","name":"באקלוג","color":"#a25ddc","tasks":[{"id":"t6","name":"מערכת התראות בזמן אמת","assignee":"עומר","status":"לא התחיל","priority":"בינוני","dueDate":"2025-08-01","tags":["פיצ'ר"]},{"id":"t7","name":"דשבורד אנליטיקס","assignee":"יוני","status":"לא התחיל","priority":"נמוך","dueDate":"2025-08-15","tags":["אנליטיקס","UI"]}]}]},{"id":"board-2","name":"📣 שיווק ומכירות","groups":[{"id":"grp-2-1","name":"קמפיינים פעילים","color":"#ff642e","tasks":[{"id":"t8","name":"קמפיין Google Ads Q3","assignee":"מיכל","status":"עובד על זה","priority":"גבוה","dueDate":"2025-07-30","tags":["פרסום","גוגל"]},{"id":"t9","name":"כתיבת בלוג פוסט שבועי","assignee":"שירה","status":"עובד על זה","priority":"בינוני","dueDate":"2025-07-17","tags":["תוכן"]},{"id":"t10","name":"עדכון דף מחירים","assignee":"דנה","status":"הושלם","priority":"גבוה","dueDate":"2025-07-12","tags":["אתר","מחירים"]}]},{"id":"grp-2-2","name":"לידים וסגירות","color":"#00c875","tasks":[{"id":"t11","name":"פולואפ ללידים מהכנס","assignee":"עומר","status":"בבדיקה","priority":"קריטי","dueDate":"2025-07-14","tags":["מכירות"]},{"id":"t12","name":"הכנת מצגת למשקיעים","assignee":"ירון","status":"עובד על זה","priority":"קריטי","dueDate":"2025-07-22","tags":["משקיעים","מצגת"]}]}]},{"id":"board-3","name":"🏢 תפעול ו-HR","groups":[{"id":"grp-3-1","name":"גיוס","color":"#fdab3d","tasks":[{"id":"t13","name":"ראיונות מפתח Full Stack","assignee":"יוני","status":"עובד על זה","priority":"גבוה","dueDate":"2025-07-19","tags":["גיוס","פיתוח"]},{"id":"t14","name":"פרסום משרת מעצב/ת","assignee":"מיכל","status":"הושלם","priority":"בינוני","dueDate":"2025-07-08","tags":["גיוס","עיצוב"]},{"id":"t15","name":"אונבורדינג עובד חדש","assignee":"דנה","status":"לא התחיל","priority":"גבוה","dueDate":"2025-07-28","tags":["HR","אונבורדינג"]}]},{"id":"grp-3-2","name":"תפעול שוטף","color":"#e2445c","tasks":[{"id":"t16","name":"חידוש רישיון תוכנה","assignee":"אלעד","status":"תקוע","priority":"קריטי","dueDate":"2025-07-13","tags":["תפעול","רישיונות"]},{"id":"t17","name":"תכנון יום גיבוש","assignee":"נועם","status":"עובד על זה","priority":"נמוך","dueDate":"2025-08-10","tags":["תרבות","גיבוש"]}]}]}]};
+
+// ==================== STATE ====================
+let state = {boards:[], currentBoardId:null, currentView:'table', searchQuery:'', filters:{status:'',priority:'',assignee:''}};
+let collapsedGroups = new Set();
+let dragData = null;
+
+// ==================== INIT ====================
+function init(){
+  loadData();
+  if(!state.boards.length){state.boards=JSON.parse(JSON.stringify(DEFAULT_DATA.boards))}
+  if(!state.currentBoardId && state.boards.length) state.currentBoardId=state.boards[0].id;
+  renderSidebar();
+  renderContent();
+  populateFilterAssignees();
+  populateTaskModalAssignees();
+  // Close dropdowns on outside click
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.assignee-cell')&&!e.target.closest('.pill-dropdown'))
+      document.querySelectorAll('.assignee-dropdown.show,.pill-dropdown.show').forEach(d=>d.classList.remove('show'));
+  });
+}
+
+function loadData(){
+  try{const d=localStorage.getItem('shaina-data');if(d)state.boards=JSON.parse(d);}catch(e){console.error(e)}
+}
+function saveData(){
+  try{localStorage.setItem('shaina-data',JSON.stringify(state.boards));}catch(e){console.error(e)}
+}
+function getBoard(){return state.boards.find(b=>b.id===state.currentBoardId)}
+function getMember(name){return MEMBERS.find(m=>m.name===name)||{name,avatar:'👤'}}
+function getStatusInfo(status){return STATUSES.find(s=>s.value===status)||STATUSES[0]}
+function getPriorityInfo(priority){return PRIORITIES.find(p=>p.value===priority)||PRIORITIES[2]}
+function genId(){return 'id-'+Date.now()+'-'+Math.random().toString(36).substr(2,6)}
+function isOverdue(dateStr){if(!dateStr)return false;return new Date(dateStr)<new Date(new Date().toDateString())}
+
+// ==================== SIDEBAR ====================
+function renderSidebar(){
+  const list=document.getElementById('boardList');
+  list.innerHTML=state.boards.map(b=>{
+    const taskCount=b.groups.reduce((sum,g)=>sum+g.tasks.length,0);
+    return `<div class="board-item ${b.id===state.currentBoardId?'active':''}" onclick="switchBoard('${b.id}')">
+      <span class="board-icon">${b.name.match(/^\S+/)?.[0]||'📋'}</span>
+      <span class="board-name">${b.name.replace(/^\S+\s*/,'')}</span>
+      <span class="board-count">${taskCount}</span>
+    </div>`;
+  }).join('');
+
+  const members=document.getElementById('memberList');
+  members.innerHTML=MEMBERS.map(m=>`<div class="member-item"><span class="member-avatar">${m.avatar}</span><span>${m.name}</span></div>`).join('');
+}
+
+function switchBoard(id){
+  state.currentBoardId=id;
+  renderSidebar();
+  renderContent();
+  // Close sidebar on mobile
+  if(window.innerWidth<=900) document.getElementById('sidebar').classList.remove('open');
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+
+// ==================== CONTENT ====================
+function renderContent(){
+  const board=getBoard();
+  if(!board) return;
+  document.getElementById('boardTitle').textContent=board.name;
+  if(state.currentView==='table') renderTableView(board);
+  else renderKanbanView(board);
+}
+
+// ==================== TABLE VIEW ====================
+function renderTableView(board){
+  const area=document.getElementById('contentArea');
+  const filtered=getFilteredGroups(board);
+
+  if(filtered.every(g=>g.tasks.length===0)&&(state.searchQuery||state.filters.status||state.filters.priority||state.filters.assignee)){
+    area.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><p>לא נמצאו משימות התואמות לחיפוש</p></div>`;
+    return;
+  }
+
+  area.innerHTML = filtered.map(g=>{
+    const isCollapsed=collapsedGroups.has(g.id);
+    const doneCount=g.tasks.filter(t=>t.status==='הושלם').length;
+    const progress=g.tasks.length?Math.round(doneCount/g.tasks.length*100):0;
+    const statusInfo=getStatusInfo('הושלם');
+
+    return `<div class="group" data-group-id="${g.id}">
+      <div class="group-header" onclick="toggleGroup('${g.id}')">
+        <div class="group-color-bar" style="background:${g.color}"></div>
+        <span class="group-toggle ${isCollapsed?'collapsed':''}">▼</span>
+        <span class="group-name" contenteditable="true" onclick="event.stopPropagation()" onblur="renameGroup('${g.id}',this.textContent)">${g.name}</span>
+        <div class="group-meta">
+          <span class="group-count">${g.tasks.length} משימות</span>
+          <div class="group-progress"><div class="group-progress-fill" style="width:${progress}%;background:${g.color}"></div></div>
+          <span style="font-size:11px;color:var(--text-muted)">${progress}%</span>
+        </div>
+      </div>
+      <div class="group-tasks ${isCollapsed?'collapsed-tasks':''}">
+        <div class="table-header">
+          <div>שם משימה</div><div>אחראי</div><div>סטטוס</div><div>עדיפות</div><div>תאריך יעד</div><div>תגיות</div><div></div>
+        </div>
+        ${g.tasks.map(t=>renderTaskRow(t,g.id)).join('')}
+        <div class="add-task-row" onclick="showAddTaskModal('${g.id}')">
+          <span class="plus">＋</span> הוסף משימה
+        </div>
+      </div>
+    </div>`;
+  }).join('') + `<div style="padding:8px 0"><div class="add-task-row" onclick="showAddGroupModal()" style="background:var(--bg-card);border:1px dashed var(--border);border-radius:var(--radius);justify-content:center">
+    <span class="plus">＋</span> הוסף קבוצה
+  </div></div>`;
+
+  // Setup drag and drop
+  setupDragAndDrop();
+}
+
+function renderTaskRow(task, groupId){
+  const member=getMember(task.assignee);
+  const statusInfo=getStatusInfo(task.status);
+  const priorityInfo=getPriorityInfo(task.priority);
+  const overdue=isOverdue(task.dueDate)&&task.status!=='הושלם';
+
+  return `<div class="task-row" draggable="true" data-task-id="${task.id}" data-group-id="${groupId}">
+    <div class="task-cell"><span class="task-name" contenteditable="true" onblur="updateTaskField('${task.id}','name',this.textContent)">${task.name}</span></div>
+    <div class="task-cell assignee-cell" onclick="toggleAssigneeDropdown(event,'${task.id}')">
+      <span class="assignee-avatar">${member.avatar}</span>
+      <span class="assignee-name">${member.name}</span>
+      <div class="assignee-dropdown" id="assignee-dd-${task.id}">
+        ${MEMBERS.map(m=>`<div class="assignee-option" onclick="event.stopPropagation();setAssignee('${task.id}','${m.name}')">${m.avatar} ${m.name}</div>`).join('')}
+      </div>
+    </div>
+    <div class="task-cell" style="position:relative">
+      <span class="status-pill ${statusInfo.class}" onclick="togglePillDropdown(event,'status-dd-${task.id}')">${task.status}</span>
+      <div class="pill-dropdown" id="status-dd-${task.id}">
+        ${STATUSES.map(s=>`<div class="pill-option ${s.class}" onclick="event.stopPropagation();setStatus('${task.id}','${s.value}')">${s.value}</div>`).join('')}
+      </div>
+    </div>
+    <div class="task-cell" style="position:relative">
+      <span class="priority-pill ${priorityInfo.class}" onclick="togglePillDropdown(event,'priority-dd-${task.id}')">${task.priority}</span>
+      <div class="pill-dropdown" id="priority-dd-${task.id}">
+        ${PRIORITIES.map(p=>`<div class="pill-option ${p.class}" onclick="event.stopPropagation();setPriority('${task.id}','${p.value}')">${p.value}</div>`).join('')}
+      </div>
+    </div>
+    <div class="task-cell date-cell ${overdue?'overdue':''}">
+      <input type="date" value="${task.dueDate||''}" onchange="updateTaskField('${task.id}','dueDate',this.value)">
+    </div>
+    <div class="task-cell tags-cell">
+      ${(task.tags||[]).map(tag=>`<span class="tag">${tag}</span>`).join('')}
+    </div>
+    <div class="task-cell">
+      <button class="delete-btn" onclick="deleteTask('${task.id}')" title="מחק">🗑️</button>
+    </div>
+  </div>`;
+}
+
+// ==================== KANBAN VIEW ====================
+function renderKanbanView(board){
+  const area=document.getElementById('contentArea');
+  const allTasks=[];
+  board.groups.forEach(g=>g.tasks.forEach(t=>allTasks.push({...t,groupId:g.id})));
+
+  // Filter
+  const filtered=filterTasks(allTasks);
+
+  area.innerHTML=`<div class="kanban-container">${STATUSES.map(s=>{
+    const tasks=filtered.filter(t=>t.status===s.value);
+    return `<div class="kanban-column" data-status="${s.value}">
+      <div class="kanban-column-header">
+        <div class="kanban-column-color" style="background:${s.color}"></div>
+        <span class="kanban-column-title">${s.value}</span>
+        <span class="kanban-column-count">${tasks.length}</span>
+      </div>
+      <div class="kanban-cards" data-status="${s.value}">
+        ${tasks.map(t=>{
+          const member=getMember(t.assignee);
+          const priorityInfo=getPriorityInfo(t.priority);
+          const overdue=isOverdue(t.dueDate)&&t.status!=='הושלם';
+          return `<div class="kanban-card" draggable="true" data-task-id="${t.id}" data-group-id="${t.groupId}">
+            <div class="kanban-card-title">${t.name}</div>
+            <div class="kanban-card-meta">
+              <div class="kanban-card-assignee">${member.avatar} ${member.name}</div>
+              <span class="kanban-card-priority ${priorityInfo.class}">${t.priority}</span>
+              ${t.dueDate?`<span class="kanban-card-date ${overdue?'overdue':''}">${formatDate(t.dueDate)}</span>`:''}
+            </div>
+            ${(t.tags||[]).length?`<div class="kanban-card-tags">${t.tags.map(tag=>`<span class="tag">${tag}</span>`).join('')}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+
+  setupKanbanDragDrop();
+}
+
+function formatDate(dateStr){
+  if(!dateStr)return '';
+  const d=new Date(dateStr);
+  return `${d.getDate()}/${d.getMonth()+1}`;
+}
+
+// ==================== DRAG AND DROP (TABLE) ====================
+function setupDragAndDrop(){
+  document.querySelectorAll('.task-row[draggable]').forEach(row=>{
+    row.addEventListener('dragstart',e=>{
+      row.classList.add('dragging');
+      dragData={taskId:row.dataset.taskId,groupId:row.dataset.groupId};
+      e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',()=>{
+      row.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover',e=>{
+      e.preventDefault();
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave',()=>row.classList.remove('drag-over'));
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if(!dragData)return;
+      const targetTaskId=row.dataset.taskId;
+      const targetGroupId=row.dataset.groupId;
+      if(dragData.taskId===targetTaskId)return;
+      moveTask(dragData.taskId,dragData.groupId,targetTaskId,targetGroupId);
+      dragData=null;
+    });
+  });
+}
+
+function moveTask(taskId,fromGroupId,targetTaskId,toGroupId){
+  const board=getBoard();
+  const fromGroup=board.groups.find(g=>g.id===fromGroupId);
+  const toGroup=board.groups.find(g=>g.id===toGroupId);
+  if(!fromGroup||!toGroup)return;
+  const taskIdx=fromGroup.tasks.findIndex(t=>t.id===taskId);
+  if(taskIdx===-1)return;
+  const [task]=fromGroup.tasks.splice(taskIdx,1);
+  const targetIdx=toGroup.tasks.findIndex(t=>t.id===targetTaskId);
+  toGroup.tasks.splice(targetIdx,0,task);
+  saveData();renderContent();renderSidebar();
+}
+
+// ==================== DRAG AND DROP (KANBAN) ====================
+function setupKanbanDragDrop(){
+  document.querySelectorAll('.kanban-card[draggable]').forEach(card=>{
+    card.addEventListener('dragstart',e=>{
+      card.classList.add('dragging');
+      dragData={taskId:card.dataset.taskId,groupId:card.dataset.groupId};
+      e.dataTransfer.effectAllowed='move';
+    });
+    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  });
+  document.querySelectorAll('.kanban-cards').forEach(col=>{
+    col.addEventListener('dragover',e=>{e.preventDefault();col.style.background='var(--bg-hover)'});
+    col.addEventListener('dragleave',()=>col.style.background='');
+    col.addEventListener('drop',e=>{
+      e.preventDefault();col.style.background='';
+      if(!dragData)return;
+      const newStatus=col.dataset.status;
+      updateTaskField(dragData.taskId,'status',newStatus);
+      dragData=null;
+    });
+  });
+}
+
+// ==================== TASK CRUD ====================
+function findTask(taskId){
+  const board=getBoard();
+  for(const g of board.groups) for(const t of g.tasks) if(t.id===taskId) return{task:t,group:g};
+  return null;
+}
+
+function updateTaskField(taskId,field,value){
+  const found=findTask(taskId);
+  if(!found)return;
+  found.task[field]=value;
+  saveData();renderContent();renderSidebar();
+}
+
+function setAssignee(taskId,name){
+  updateTaskField(taskId,'assignee',name);
+  document.querySelectorAll('.assignee-dropdown.show').forEach(d=>d.classList.remove('show'));
+}
+function setStatus(taskId,status){
+  updateTaskField(taskId,'status',status);
+  document.querySelectorAll('.pill-dropdown.show').forEach(d=>d.classList.remove('show'));
+}
+function setPriority(taskId,priority){
+  updateTaskField(taskId,'priority',priority);
+  document.querySelectorAll('.pill-dropdown.show').forEach(d=>d.classList.remove('show'));
+}
+
+function deleteTask(taskId){
+  if(!confirm('למחוק את המשימה?'))return;
+  const board=getBoard();
+  for(const g of board.groups){
+    const idx=g.tasks.findIndex(t=>t.id===taskId);
+    if(idx!==-1){g.tasks.splice(idx,1);break;}
+  }
+  saveData();renderContent();renderSidebar();showToast('המשימה נמחקה');
+}
+
+function showAddTaskModal(groupId){
+  document.getElementById('taskModalTitle').textContent='משימה חדשה';
+  document.getElementById('taskNameInput').value='';
+  document.getElementById('taskStatusInput').value='לא התחיל';
+  document.getElementById('taskPriorityInput').value='בינוני';
+  document.getElementById('taskDueDateInput').value='';
+  document.getElementById('taskTagsInput').value='';
+  document.getElementById('taskGroupInput').value=groupId||'';
+  document.getElementById('editTaskId').value='';
+  document.getElementById('taskModal').classList.add('show');
+  setTimeout(()=>document.getElementById('taskNameInput').focus(),100);
+}
+
+function saveTask(){
+  const name=document.getElementById('taskNameInput').value.trim();
+  if(!name){showToast('נא להזין שם משימה');return}
+  const assignee=document.getElementById('taskAssigneeInput').value;
+  const status=document.getElementById('taskStatusInput').value;
+  const priority=document.getElementById('taskPriorityInput').value;
+  const dueDate=document.getElementById('taskDueDateInput').value;
+  const tags=document.getElementById('taskTagsInput').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const editId=document.getElementById('editTaskId').value;
+  const board=getBoard();
+
+  if(editId){
+    const found=findTask(editId);
+    if(found){Object.assign(found.task,{name,assignee,status,priority,dueDate,tags})}
+  } else {
+    let groupId=document.getElementById('taskGroupInput').value;
+    let group=board.groups.find(g=>g.id===groupId);
+    if(!group){group=board.groups[0];if(!group){group={id:genId(),name:'כללי',color:'#579bfc',tasks:[]};board.groups.push(group)}}
+    group.tasks.push({id:genId(),name,assignee,status,priority,dueDate,tags});
+  }
+  saveData();closeModal('taskModal');renderContent();renderSidebar();showToast(editId?'המשימה עודכנה':'משימה נוספה בהצלחה');
+}
+
+// ==================== GROUP ====================
+function toggleGroup(groupId){
+  if(collapsedGroups.has(groupId)) collapsedGroups.delete(groupId);
+  else collapsedGroups.add(groupId);
+  renderContent();
+}
+
+function renameGroup(groupId,newName){
+  const board=getBoard();
+  const group=board.groups.find(g=>g.id===groupId);
+  if(group&&newName.trim()){group.name=newName.trim();saveData()}
+}
+
+function showAddGroupModal(){
+  document.getElementById('groupNameInput').value='';
+  document.getElementById('groupModal').classList.add('show');
+  setTimeout(()=>document.getElementById('groupNameInput').focus(),100);
+}
+
+function saveGroup(){
+  const name=document.getElementById('groupNameInput').value.trim();
+  if(!name){showToast('נא להזין שם קבוצה');return}
+  const color=document.getElementById('groupColorInput').value;
+  const board=getBoard();
+  board.groups.push({id:genId(),name,color,tasks:[]});
+  saveData();closeModal('groupModal');renderContent();showToast('קבוצה נוספה');
+}
+
+// ==================== BOARD ====================
+function showAddBoardModal(){
+  document.getElementById('boardNameInput').value='';
+  document.getElementById('boardModal').classList.add('show');
+  setTimeout(()=>document.getElementById('boardNameInput').focus(),100);
+}
+
+function saveBoard(){
+  const name=document.getElementById('boardNameInput').value.trim();
+  if(!name){showToast('נא להזין שם בורד');return}
+  const board={id:genId(),name:'📋 '+name,groups:[{id:genId(),name:'כללי',color:'#579bfc',tasks:[]}]};
+  state.boards.push(board);
+  state.currentBoardId=board.id;
+  saveData();closeModal('boardModal');renderSidebar();renderContent();showToast('בורד חדש נוצר');
+}
+
+// ==================== SEARCH & FILTER ====================
+function handleSearch(){
+  state.searchQuery=document.getElementById('searchInput').value.trim().toLowerCase();
+  renderContent();
+}
+
+function toggleFilters(){
+  const panel=document.getElementById('filterPanel');
+  const btn=document.getElementById('filterToggleBtn');
+  panel.classList.toggle('show');
+  btn.classList.toggle('active-filter',panel.classList.contains('show'));
+}
+
+function applyFilters(){
+  state.filters.status=document.getElementById('filterStatus').value;
+  state.filters.priority=document.getElementById('filterPriority').value;
+  state.filters.assignee=document.getElementById('filterAssignee').value;
+  renderContent();
+}
+
+function filterTasks(tasks){
+  return tasks.filter(t=>{
+    if(state.searchQuery && !t.name.toLowerCase().includes(state.searchQuery) && !(t.tags||[]).some(tag=>tag.toLowerCase().includes(state.searchQuery))) return false;
+    if(state.filters.status && t.status!==state.filters.status) return false;
+    if(state.filters.priority && t.priority!==state.filters.priority) return false;
+    if(state.filters.assignee && t.assignee!==state.filters.assignee) return false;
+    return true;
+  });
+}
+
+function getFilteredGroups(board){
+  return board.groups.map(g=>({...g,tasks:filterTasks(g.tasks)}));
+}
+
+function populateFilterAssignees(){
+  const sel=document.getElementById('filterAssignee');
+  MEMBERS.forEach(m=>{const o=document.createElement('option');o.value=m.name;o.textContent=m.name;sel.appendChild(o)});
+}
+
+function populateTaskModalAssignees(){
+  const sel=document.getElementById('taskAssigneeInput');
+  sel.innerHTML=MEMBERS.map(m=>`<option value="${m.name}">${m.avatar} ${m.name}</option>`).join('');
+}
+
+// ==================== VIEW TOGGLE ====================
+function setView(view){
+  state.currentView=view;
+  document.querySelectorAll('.view-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  renderContent();
+}
+
+// ==================== UI HELPERS ====================
+function toggleAssigneeDropdown(e,taskId){
+  e.stopPropagation();
+  const dd=document.getElementById('assignee-dd-'+taskId);
+  document.querySelectorAll('.assignee-dropdown.show,.pill-dropdown.show').forEach(d=>{if(d!==dd)d.classList.remove('show')});
+  dd.classList.toggle('show');
+}
+
+function togglePillDropdown(e,ddId){
+  e.stopPropagation();
+  const dd=document.getElementById(ddId);
+  document.querySelectorAll('.assignee-dropdown.show,.pill-dropdown.show').forEach(d=>{if(d!==dd)d.classList.remove('show')});
+  dd.classList.toggle('show');
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+function showToast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
+}
+
+// Close modals on escape
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.querySelectorAll('.modal-overlay.show').forEach(m=>m.classList.remove('show'));
+    document.querySelectorAll('.assignee-dropdown.show,.pill-dropdown.show').forEach(d=>d.classList.remove('show'));
+  }
+});
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay=>{
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('show')});
+});
+
+// ==================== BOOT ====================
+init();
+</script>
+</body>
+</html>
